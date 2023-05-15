@@ -1,5 +1,6 @@
-#include <ADS1115_lite.h>
 #include <Ethernet.h>
+#include <EthernetUdp.h>
+#include <ADS1115_lite.h>
 #include <Adafruit_MAX31865.h>
 #include <U8x8lib.h>
 #include <Wire.h>
@@ -29,11 +30,15 @@ Adafruit_MAX31865 thermo = Adafruit_MAX31865(4, 5, 6, 7);
 
 ////// ETHERNET VARIABLES /////
 EthernetClient client;
+EthernetUDP udp;
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xEB };
+unsigned int localPort = 8040;
 
-IPAddress SERVER_NAME(139, 184, 52, 38);
-int    SERVER_PORT = 8086;
-String INFLUXDB_DATABASE = "Database_For_Testing";
+char packetBuffer[UDP_TX_PACKET_MAX_SIZE];
+
+IPAddress SERVER_NAME(192, 168, 132, 1);
+int    SERVER_PORT = 8085;
+String INFLUXDB_DATABASE = "Env_Test";
 String INFLUXDB_USERNAME = "";
 String INFLUXDB_PASSWORD = "";
 String HTTP_METHOD = "POST";
@@ -79,20 +84,24 @@ void setup() {
   u8x8.drawString(0, 2, "Connecting to");
   u8x8.drawString(0, 3, "network...");
   pinMode(10, OUTPUT);   // SPI SS pin for most Arduino models (need to connect)
-  Serial.println("Trying to connect to network...");
+  Serial.println("Waiting for IP...");
   if (Ethernet.begin(mac) == 0) { // Putting only mac here means dhcp will be used (and assigned ip address will appear in router table)
     NetworkConnected = false;
     u8x8.drawString(2, 6, "Failed!");
-    Serial.println("Failed");
+    Serial.println("Network Connection Failed");
   } else {
     NetworkConnected = true;
     u8x8.drawString(11, 3, "Done!");
     u8x8.drawString(2, 6, IpAddress2String(Ethernet.localIP()).c_str() );
     Serial.println(IpAddress2String(Ethernet.localIP()));
-    Serial.println("Success");
+    Serial.println("Network Connected");
     Serial.println(Ethernet.localIP());
 
   }
+
+  udp.begin(localPort);
+
+
   delay(3000);
   /////////////////////
 
@@ -110,6 +119,7 @@ void setup() {
 
   // Initialise parameters on the OLED display screen /////////////
   u8x8.clearDisplay();
+  u8x8.drawString(0, 0, IpAddress2String(Ethernet.localIP()).c_str());
   u8x8.drawString(0, 2, "BX = ");
   u8x8.drawString(5, 2, "00.000");
   u8x8.drawString(13, 2, "uT");
@@ -127,6 +137,30 @@ void setup() {
 }
 
 void loop() {
+
+  int packetSize = Udp.parsePacket();
+  if(packetSize)
+  {
+    Serial.print("Received packet of size ");
+    Serial.println(packetSize);
+    Serial.print("From ");
+    IPAddress remote = Udp.remoteIP();
+    for (int i =0; i < 4; i++)
+    {
+      Serial.print(remote[i], DEC);
+      if (i < 3)
+      {
+        Serial.print(".");
+      }
+    }
+    Serial.print(", port ");
+    Serial.println(Udp.remotePort());
+
+    // read the packet into packetBuffer
+    Udp.read(packetBuffer,UDP_TX_PACKET_MAX_SIZE);
+    Serial.println("Contents:");
+    Serial.println(packetBuffer);
+  }
 
   currentMillis = millis();
 
@@ -172,10 +206,10 @@ void loop() {
       response_code  = post_data_to_influxdb(payload); // Takes 25 ms to connect, post data, and read response
       if (response_code == 204) {
         Serial.println("Posted successfully to InfluxDB...");
-        u8x8.drawString(0, 0, "Posted to Influx");
+        // u8x8.drawString(0, 0, "Posted to Influx");
       } else {
         Serial.println("Post to InfluxDB failed...");
-        u8x8.drawString(0, 0, "Failed to post");
+        // u8x8.drawString(0, 0, "Failed to post");
       }
     }
 
