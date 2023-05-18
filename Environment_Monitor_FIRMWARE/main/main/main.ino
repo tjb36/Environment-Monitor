@@ -246,40 +246,11 @@ void setup() {
 ISR( TIMER1_OVF_vect ){        // interrupt service routine
   TCNT1 = interuptRate;   // preload timer
 
-  //Measure the temperature using PT100 probe
-  T = thermo.temperature(RNOMINAL, RREF);
-
-  // Calculate temperature-dependent calibration factors for converting from ADC counts to sensor voltage
-  float SLOPE = -0.01474697320 * T - 1599.32272039864;
-  float OFFSET = 0.14383886517 * T + 16376.1858163842;
-
-  // Read Channel #1 ///////////////////
-  average_counts = collect_ADC_averagecounts(0);
-  Bfield_X_Sensorvoltage = (average_counts - OFFSET) / SLOPE;
-  Bfield_X_Sensorvoltage = Bfield_X_Sensorvoltage + 0.00;   // Minor correction to each channels reading (on the order of 100uV only)
-  Bfield_X = Bfield_X_Sensorvoltage * microTeslaPerVolt;
-  //////////////////////////////////////
-
-  // Read Channel #2 ///////////////////
-  average_counts = collect_ADC_averagecounts(1);
-  Bfield_Y_Sensorvoltage = (average_counts - OFFSET) / SLOPE;
-  Bfield_Y_Sensorvoltage = Bfield_Y_Sensorvoltage + 0.00;
-  Bfield_Y = Bfield_Y_Sensorvoltage * microTeslaPerVolt;
-  //////////////////////////////////////
-
-  // Read Channel #3 ///////////////////
-  average_counts = collect_ADC_averagecounts(2);
-  Bfield_Z_Sensorvoltage = (average_counts - OFFSET) / SLOPE;
-  Bfield_Z_Sensorvoltage = Bfield_Z_Sensorvoltage + 0.00;
-  Bfield_Z = Bfield_Z_Sensorvoltage * microTeslaPerVolt;
-  //////////////////////////////////////
-
   // Post data packets to influx if requested
   if( postDataPackets ){
     // Construct InfluxDB payload
-    const float flux[] = {Bfield_X, Bfield_Y, Bfield_Z};
+    float flux[] = {Bfield_X, Bfield_Y, Bfield_Z};
     String payload = "";
-    Serial.println("WEEEEEEEEEEEEEEE");
 
     for( int i = 0; i < 3; i++ ){
       payload = "bartington,axis=" + axis[i] + ",experiment_ID=" + experimentID + " flux=" + String(flux[i], 5);
@@ -335,6 +306,34 @@ void loop() {
   }
 
   udpClient.flushPacketBuffer();
+
+  //Measure the temperature using PT100 probe
+  T = thermo.temperature(RNOMINAL, RREF);
+
+  // Calculate temperature-dependent calibration factors for converting from ADC counts to sensor voltage
+  float SLOPE = -0.01474697320 * T - 1599.32272039864;
+  float OFFSET = 0.14383886517 * T + 16376.1858163842;
+
+  // Read Channel #1 ///////////////////
+  average_counts = collect_ADC_averagecounts(0);
+  Bfield_X_Sensorvoltage = (average_counts - OFFSET) / SLOPE;
+  Bfield_X_Sensorvoltage = Bfield_X_Sensorvoltage + 0.00;   // Minor correction to each channels reading (on the order of 100uV only)
+  Bfield_X = Bfield_X_Sensorvoltage * microTeslaPerVolt;
+  //////////////////////////////////////
+
+  // Read Channel #2 ///////////////////
+  average_counts = collect_ADC_averagecounts(1);
+  Bfield_Y_Sensorvoltage = (average_counts - OFFSET) / SLOPE;
+  Bfield_Y_Sensorvoltage = Bfield_Y_Sensorvoltage + 0.00;
+  Bfield_Y = Bfield_Y_Sensorvoltage * microTeslaPerVolt;
+  //////////////////////////////////////
+
+  // Read Channel #3 ///////////////////
+  average_counts = collect_ADC_averagecounts(2);
+  Bfield_Z_Sensorvoltage = (average_counts - OFFSET) / SLOPE;
+  Bfield_Z_Sensorvoltage = Bfield_Z_Sensorvoltage + 0.00;
+  Bfield_Z = Bfield_Z_Sensorvoltage * microTeslaPerVolt;
+  //////////////////////////////////////
 
   updateOLED(Bfield_X,Bfield_Y,Bfield_Z,T);
 
