@@ -122,7 +122,7 @@ UDPClient udpClient( localPort );
 
 IPAddress SERVER_NAME(192, 168, 10, 2);
 int    SERVER_PORT = 8089;
-int    INFLUX_SENDER_PORT = 8234;
+int    INFLUX_SENDER_PORT = 8089;
 String INFLUXDB_DATABASE = "quantbatt";
 String INFLUXDB_USERNAME = "";
 String INFLUXDB_PASSWORD = "";
@@ -375,6 +375,7 @@ String IpAddress2String(const IPAddress& ipAddress)
 
 void updateOLED(float Bfield_X, float Bfield_Y, float Bfield_Z, float T){
   // Convert floats to character arrays, so that they can be printed to screen
+  u8x8.clearDisplay();
   dtostrf(Bfield_X, 5, 3, result1);
   dtostrf(Bfield_Y, 5, 3, result2);
   dtostrf(Bfield_Z, 5, 3, result3);
